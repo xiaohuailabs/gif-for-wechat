@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FRAME LAB · GIF 工坊 — 公众号 GIF 预处理台</title>
+  <meta name="description" content="把任意录屏 GIF 处理成公众号可粘贴的格式：<10MB、≤300 帧，全程本地处理。">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2' y='4' width='20' height='16' rx='3' fill='none' stroke='%232be5a0' stroke-width='2'/%3E%3Cpath d='M7 4v16M17 4v16' stroke='%232be5a0' stroke-width='2'/%3E%3C/svg%3E">
+</head>
+<body>
+  <!-- 背景层: 坐标纸网格 + 顶部光晕 -->
+  <div class="bg-grid"></div>
+  <div class="bg-glow"></div>
+
+  <!-- ================= 顶栏 · 仪器铭牌 ================= -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M7 4v16M17 4v16M2 9h5M2 15h5M17 9h5M17 15h5"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">FRAME <em>LAB</em></div>
+        <div class="brand-sub">GIF PREPROCESSOR</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="engine-chip" id="engineChip" title="压缩引擎状态">
+        <span class="pulse-dot"></span>
+        <span id="engineName">READY</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- ================= 01 · 装片区 ================= -->
+    <section>
+      <div class="section-head">
+        <span class="section-idx">01</span>
+        <span class="section-title">装片</span>
+        <span class="section-line"></span>
+        <span class="section-note">LOAD / GIF</span>
+      </div>
+
+      <div class="dropzone" id="dropzone">
+        <span class="frame-corner fc-tl"></span>
+        <span class="frame-corner fc-tr"></span>
+        <span class="frame-corner fc-bl"></span>
+        <span class="frame-corner fc-br"></span>
+
+        <div class="dz-inner">
+          <div class="film-holes" aria-hidden="true">
+            <span class="film-hole"></span><span class="film-hole"></span><span class="film-hole"></span><span class="film-hole"></span><span class="film-hole"></span>
+          </div>
+
+          <div class="dz-icon">
+            <svg width="34" height="34" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="6.5" y="5.5" width="19" height="21" rx="3"/>
+              <rect x="12" y="2" width="8" height="2.4" rx="1.2" fill="currentColor" stroke="none"/>
+              <rect x="12" y="27.6" width="8" height="2.4" rx="1.2" fill="currentColor" stroke="none"/>
+              <path d="M16 10.5v8"/>
+              <path d="M12.2 15.2 16 19l3.8-3.8"/>
+              <path d="M10.5 23.5h11"/>
+            </svg>
+          </div>
+
+          <div class="dz-title">把录屏 <em>拖进暗房</em></div>
+          <div class="dz-sub">点击或拖拽 GIF 文件到此处 · 全程本机处理，文件不上传任何服务器</div>
+
+          <div class="dz-specs">
+            <span class="spec-pill">目标体积 <b>&lt; 10 MB</b></span>
+            <span class="spec-pill">帧数上限 <b>≤ 300 帧</b></span>
+            <span class="spec-pill">单文件 <b>≤ 100 MB</b></span>
+          </div>
+        </div>
+
+        <input type="file" id="fileInput" accept=".gif,image/gif" multiple hidden>
+      </div>
+    </section>
+
+    <!-- ================= 02 · 出片区 ================= -->
+    <section class="queue">
+      <div class="section-head">
+        <span class="section-idx">02</span>
+        <span class="section-title">出片区</span>
+        <span class="section-line"></span>
+        <button class="btn btn-secondary btn-sm" id="startAllBtn" type="button" style="display:none;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l14 8-14 8V4z"/></svg>
+          全部开始
+        </button>
+        <span class="section-note">OUTPUT / QUEUE</span>
+      </div>
+      <div id="emptyHint" style="display:none;">
+        <div class="dropzone" style="cursor:default; padding:34px 24px;">
+          <div class="dz-inner">
+            <div class="dz-sub" style="margin:0;">还没有任务 · 装片后的 GIF 会出现在这里, 选好模式再开工</div>
+          </div>
+        </div>
+      </div>
+      <div id="queue"></div>
+    </section>
+
+    <!-- ================= 03 · 控制台 ================= -->
+    <section style="margin-top: 40px;">
+      <div class="section-head">
+        <span class="section-idx">03</span>
+        <span class="section-title">控制台</span>
+        <span class="section-line"></span>
+        <span class="section-note">CONSOLE</span>
+      </div>
+
+      <div class="console">
+        <div class="console-head">
+          <span class="label">处理模式</span>
+          <div class="segmented" id="modeSeg" data-active="0">
+            <span class="seg-indicator"></span>
+            <button class="segment active" data-mode="auto" type="button">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3m0 12v3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M3 12h3m12 0h3M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1"/><circle cx="12" cy="12" r="3.4"/></svg>
+              智能模式
+            </button>
+            <button class="segment" data-mode="manual" type="button">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3m8 18v-9m0-4V3m8 18v-5m0-4V3"/><path d="M1 14h6M9 10h6M17 12h6"/></svg>
+              手动模式
+            </button>
+          </div>
+        </div>
+
+        <div class="console-body">
+          <!-- 智能模式 -->
+          <div class="panel active" id="panel-auto">
+            <div class="auto-desc">
+              <div class="icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4m0 12v4M4.9 4.9l2.8 2.8m9.6 9.6 2.8 2.8M2 12h4m12 0h4M4.9 19.1l2.8-2.8m9.6-9.6 2.8-2.8"/></svg>
+              </div>
+              <div>
+                <h4><span class="kicker">AUTO RINSE</span>交给暗房的自动冲洗线</h4>
+                <p>先做<b>不损画质</b>的纯优化（全局调色板 + 差异区域编码）；仍超标就沿阶梯逐级加压：<b>缩放 → 减色 → 抽帧</b>，每一步只加一档，命中即停——永远用最温和的达标方案。</p>
+              </div>
+            </div>
+            <div class="target-row">
+              <div>
+                <div class="label">目标体积</div>
+                <div class="hint">达标即停, 不会过度压缩</div>
+              </div>
+              <div class="target-input-wrap">
+                <input type="number" id="targetMB" min="1" max="10" step="0.5" value="9.5" aria-label="目标体积 MB">
+                <span class="unit">MB</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 手动模式 -->
+          <div class="panel" id="panel-manual">
+            <div class="combo-row" id="comboRow"><!-- 组合预设由 JS 渲染 --></div>
+            <div id="optGroups"><!-- 选项组由 JS 渲染 --></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
